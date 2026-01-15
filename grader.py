@@ -42,25 +42,67 @@ def ask_llama(course: str, assignment: str, code: str) -> tuple[str, str, str]:
     """
     Returns (grade, feedback, new_status).
     """
+    # --- RAG: REtrIEVAL ---
+    rubric_content = "No specific rubric provided. Use general best practices."
+    solution_content = "No reference solution provided."
+    
+    # Clean filenames for path safety
+    safe_course = course.strip().replace("/", "_")
+    safe_assign = assignment.strip().replace("/", "_")
+    
+    base_path = os.path.join("rubrics", safe_course, safe_assign)
+    rubric_path = os.path.join(base_path, "rubric.md")
+    solution_path = os.path.join(base_path, "solution.py")
+
+    if os.path.exists(rubric_path):
+        with open(rubric_path, "r") as f:
+            rubric_content = f.read()
+            
+    if os.path.exists(solution_path):
+        with open(solution_path, "r") as f:
+            solution_content = f.read()
+
+    # --- PROMPT AUGMENTATION ---
     prompt = f"""
 You are a coding teacher grading student work.
 
+CONTEXT:
 Course: {course}
 Assignment: {assignment}
 
-Student code:
-```text
+REFERENCE SOLUTION:
+```python
+{solution_content}
+```
+
+GRADING RUBRIC:
+{rubric_content}
+
+STUDENT SUBMISSION:
+```python
 {code}
 ```
 
+INSTRUCTIONS:
+Compare the Student Submission against the Reference Solution and Rubric.
+1. Check for **FACTUAL ERRORS** in comments/strings (e.g. definitions, operators, rules).
+2. Check for **CODE ERRORS** (syntax, missing requirements).
+3. If the code runs but the *explanations* are wrong (like saying = is ==), that is a RESUBMIT.
+
+IMPORTANT:
+- If you mark something as wrong, you MUST reference the specific line or quote the student's text.
+- Be careful: Do not claim a definition is missing if it is present. Look closely at all print statements.
+
 Please provide:
-1. A short Grade (Pass, Fail, or Resubmit).
-2. A brief, helpful Feedback message for the student (max 2 sentences).
-3. The recommended status update ({STATUS_GRADED} or {STATUS_RESUBMIT}).
+1. A Score out of 10 (based on the rubric).
+2. A short Grade (Pass if score >= 5, otherwise Resubmit).
+3. A feedback message. **If score < 10, specifically quote the mistake.**
+4. The recommended status update ({STATUS_GRADED} or {STATUS_RESUBMIT}).
 
 Output format (strict JSON):
 {{
-  "grade": "Pass/Fail/Resubmit",
+  "score": 0,
+  "grade": "Pass/Pass/Resubmit",
   "feedback": "...",
   "status": "{STATUS_GRADED} or {STATUS_RESUBMIT}"
 }}
@@ -79,7 +121,12 @@ Output format (strict JSON):
         data = response.json()
         content = json.loads(data["response"])
         
-        return content.get("grade", "Unknown"), content.get("feedback", "No feedback"), content.get("status", STATUS_GRADED)
+        # Format grade to include score
+        score = content.get("score", 0)
+        grade_text = content.get("grade", "Unknown")
+        final_grade = f"{grade_text} ({score}/10)"
+
+        return final_grade, content.get("feedback", "No feedback"), content.get("status", STATUS_GRADED)
     except Exception as e:
         print(f"Error calling Ollama: {e}")
         return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
