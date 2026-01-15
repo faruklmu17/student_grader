@@ -2,6 +2,14 @@ import requests
 import gspread
 import json
 from google.oauth2.service_account import Credentials
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ---------- CONFIG YOU MUST EDIT ----------
 SHEET_NAME = "Student Grading"      # your spreadsheet name
@@ -15,6 +23,15 @@ COL_CODE = "Paste Your Code Here"
 COL_GRADE = "Grade"
 COL_FEEDBACK = "Feedback"
 COL_STATUS = "Status"
+COL_EMAIL = "Student Email"
+COL_NAME = "Student Name"
+
+# Email Config
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SENDER_EMAIL = os.getenv("EMAIL_SENDER")
+SENDER_PASSWORD = os.getenv("EMAIL_PASSWORD")
+TEST_RECIPIENT = "farukqmul@gmail.com"  # Set to None to send to actual students
 # -----------------------------------------
 
 STATUS_NEW = "Not Graded"
@@ -67,6 +84,65 @@ Output format (strict JSON):
         print(f"Error calling Ollama: {e}")
         return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
 
+def send_email(to_email, student_name, course, assignment, grade, feedback):
+    """Sends an email with the grade and feedback using an HTML template."""
+    if not SENDER_EMAIL or "your_email" in SENDER_EMAIL:
+        print("Skipping email: SENDER_EMAIL not configured.")
+        return
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = to_email
+        msg['Subject'] = f"Feedback: {course} - {assignment}"
+
+        # Determine next step based on grade
+        next_step = "Great job! You can move on to the next assignment."
+        if "Fail" in grade or "Resubmit" in grade:
+             next_step = "Please review the feedback, fix your code, and resubmit using the same form."
+
+        # Load and fill template
+        try:
+            with open("email_template.html", "r", encoding="utf-8") as f:
+                html_content = f.read()
+            
+            # Replace placeholders
+            html_content = html_content.replace("{{StudentName}}", student_name if student_name else "Student")
+            html_content = html_content.replace("{{Course}}", course)
+            html_content = html_content.replace("{{Assignment}}", assignment)
+            html_content = html_content.replace("{{Grade}}", grade)
+            html_content = html_content.replace("{{Feedback}}", feedback)
+            html_content = html_content.replace("{{NextStep}}", next_step)
+            
+            msg.attach(MIMEText(html_content, 'html'))
+        except FileNotFoundError:
+            print("  -> Warning: email_template.html not found, sending plain text fallback.")
+            body = f"""
+Hello {student_name},
+
+Here is the feedback for your submission:
+
+Course: {course}
+Assignment: {assignment}
+
+Grade: {grade}
+Feedback: {feedback}
+
+Best regards,
+Your Coding Teacher
+"""
+            msg.attach(MIMEText(body, 'plain'))
+
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT) # type: ignore
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        text = msg.as_string()
+        server.sendmail(SENDER_EMAIL, to_email, text)
+        server.quit()
+        print(f"  -> Email sent to {to_email}")
+    except Exception as e:
+        print(f"  -> Failed to send email: {e}")
+
 def get_column_index(headers, possible_names):
     """Helper to find column index (1-based) for a list of possible header names."""
     lower_headers = [h.lower().strip() for h in headers]
@@ -106,6 +182,8 @@ def main():
     col_course = get_column_index(headers, [COL_COURSE])
     col_assignment = get_column_index(headers, [COL_ASSIGNMENT])
     col_code = get_column_index(headers, [COL_CODE])
+    col_email = get_column_index(headers, [COL_EMAIL])
+    col_name = get_column_index(headers, [COL_NAME])
 
     # If critical columns needed for grading shouldn't be guessed, you can hardcode indices or error out
     if not (col_course and col_assignment and col_code):
@@ -155,6 +233,23 @@ def main():
             sheet.update_cell(i, col_status, new_status)
             print(f"  -> Result: {grade} | Status: {new_status}")
             updates_made += 1
+
+            # Send Email
+            student_email = ""
+            if col_email:
+                student_email = row[col_email - 1] if (col_email - 1) < len(row) else ""
+            
+            student_name = ""
+            if col_name:
+                student_name = row[col_name - 1] if (col_name - 1) < len(row) else "Student"
+
+            # Use test recipient if set, otherwise real student email
+            target_email = TEST_RECIPIENT if TEST_RECIPIENT else student_email
+
+            if target_email:
+                send_email(target_email, student_name, course, assignment, grade, feedback)
+            else:
+                print("  -> No email address found, skipping email.")
 
     if updates_made == 0:
         print("No new submissions to grade.")

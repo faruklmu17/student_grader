@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment Result</title>
+</head>
+
+<body
+    style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #1f2937;">
+
+    <!-- Main Wrapper -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f3f4f6; padding: 40px 0;">
+        <tr>
+            <td align="center">
+
+                <!-- Card Container -->
+                <table border="0" cellpadding="0" cellspacing="0" width="600"
+                    style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); max-width: 90%;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td
+                            style="background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); padding: 32px; text-align: center;">
+                            <h1
+                                style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">
+                                Assignment Graded</h1>
+                            <p style="color: #e0e7ff; margin: 8px 0 0 0; font-size: 15px; font-weight: 500;">Your
+                                submission has been reviewed</p>
+                        </td>
+                    </tr>
+
+                    <!-- Content Body -->
+                    <tr>
+                        <td style="padding: 40px;">
+
+                            <!-- Greeting -->
+                            <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #374151;">
+                                Hi <strong>{{StudentName}}</strong>,
+                            </p>
+                            <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 1.6; color: #4b5563;">
+                                I've taken a look at your recent code submission. Here is the breakdown of your results.
+                            </p>
+
+                            <!-- Details Card -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%"
+                                style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 32px;">
+                                <tr>
+                                    <td valign="top" width="50%"
+                                        style="padding: 20px; border-right: 1px solid #e5e7eb;">
+                                        <div
+                                            style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 700; margin-bottom: 6px;">
+                                            Course</div>
+                                        <div style="font-size: 15px; font-weight: 600; color: #111827;">{{Course}}</div>
+                                    </td>
+                                    <td valign="top" width="50%" style="padding: 20px;">
+                                        <div
+                                            style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 700; margin-bottom: 6px;">
+                                            Assignment</div>
+                                        <div style="font-size: 15px; font-weight: 600; color: #111827;">{{Assignment}}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2"
+                                        style="border-top: 1px solid #e5e7eb; padding: 20px; text-align: center;">
+                                        <div
+                                            style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; font-weight: 700; margin-bottom: 12px;">
+                                            Result</div>
+                                        <!-- Sleek Badge -->
+                                        <span
+                                            style="display: inline-block; padding: 8px 24px; background-color: #1f2937; color: #ffffff; border-radius: 50px; font-size: 15px; font-weight: 600; letter-spacing: 0.5px;">
+                                            {{Grade}}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Feedback Section -->
+                            <div style="margin-bottom: 32px;">
+                                <h3
+                                    style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #1f2937; margin: 0 0 12px 0;">
+                                    Teacher Feedback</h3>
+                                <div
+                                    style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 4px;">
+                                    <p
+                                        style="margin: 0; font-size: 15px; line-height: 1.6; color: #1e3a8a; font-style: italic;">
+                                        "{{Feedback}}"
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Next Steps -->
+                            <div style="margin-bottom: 40px;">
+                                <h3
+                                    style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #1f2937; margin: 0 0 12px 0;">
+                                    Next Step</h3>
+                                <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #4b5563;">
+                                    {{NextStep}}
+                                </p>
+                            </div>
+
+                            <!-- Divider -->
+                            <div style="height: 1px; background-color: #e5e7eb; margin-bottom: 32px;"></div>
+
+                            <!-- Signature -->
+                            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                                <div style="font-size: 16px; font-weight: 700; color: #111827; margin-bottom: 4px;">
+                                    Faruk Hasan</div>
+                                <div style="font-size: 14px; color: #6b7280; margin-bottom: 16px;">Software Development
+                                    Engineer in Test (SDET) | Educator</div>
+
+                                <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+                                    <tr>
+                                        <td style="padding-right: 12px; font-size: 14px;">
+                                            <a href="mailto:farukqmul@email.com"
+                                                style="color: #4f46e5; text-decoration: none; font-weight: 500;">
+                                                📧 farukqmul@email.com
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding-right: 12px; font-size: 14px; padding-top: 6px;">
+                                            <a href="https://faruk-hasan.com"
+                                                style="color: #4f46e5; text-decoration: none; font-weight: 500;">
+                                                🌐 faruk-hasan.com
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-size: 14px; padding-top: 6px;">
+                                            <a href="#"
+                                                style="color: #4f46e5; text-decoration: none; font-weight: 500; margin-right: 12px;">🔗
+                                                LinkedIn</a>
+                                            <a href="#"
+                                                style="color: #4f46e5; text-decoration: none; font-weight: 500;">🎓
+                                                Outschool Profile</a>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <div
+                                    style="font-size: 14px; font-style: italic; color: #9ca3af; font-family: Georgia, serif;">
+                                    “Empowering learners through code and creativity.”
+                                </div>
+                            </div>
+
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background-color: #f9fafb; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+                            <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+                                &copy; 2026 Faruk Hasan. Best of luck with your coding journey!
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+                <!-- End Card -->
+
+                <div style="height: 40px;"></div>
+
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>
