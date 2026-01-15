@@ -6,6 +6,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -25,6 +26,10 @@ COL_FEEDBACK = "Feedback"
 COL_STATUS = "Status"
 COL_EMAIL = "Student Email"
 COL_NAME = "Student Name"
+COL_GRADEBOOK_LINK = "Gradebook Link"
+
+# Master Gradebook Config
+MASTER_GRADEBOOK_NAME = "Master Student Gradebook"
 
 # Email Config
 SMTP_SERVER = "smtp.gmail.com"
@@ -43,7 +48,14 @@ def ask_llama(course: str, assignment: str, code: str) -> tuple[str, str, str]:
     Returns (grade, feedback, new_status).
     """
     # --- RAG: REtrIEVAL ---
-    rubric_content = "No specific rubric provided. Use general best practices."
+    base_rubric_path = os.path.join("rubrics", "general_rubric.md")
+    rubric_content = "Use general Python best practices."
+    
+    # Try to load general fallback first
+    if os.path.exists(base_rubric_path):
+        with open(base_rubric_path, "r") as f:
+            rubric_content = f.read()
+
     solution_content = "No reference solution provided."
     
     # Clean filenames for path safety
@@ -54,6 +66,7 @@ def ask_llama(course: str, assignment: str, code: str) -> tuple[str, str, str]:
     rubric_path = os.path.join(base_path, "rubric.md")
     solution_path = os.path.join(base_path, "solution.py")
 
+    # Override with specific rubric if it exists
     if os.path.exists(rubric_path):
         with open(rubric_path, "r") as f:
             rubric_content = f.read()
@@ -123,15 +136,59 @@ Output format (strict JSON):
         
         # Format grade to include score
         score = content.get("score", 0)
-        grade_text = content.get("grade", "Unknown")
+        
+        # We enforce the Pass (>= 5) logic in Python to avoid AI hallucination
+        if score >= 5:
+            grade_text = "Pass"
+            status = STATUS_GRADED
+        else:
+            grade_text = "Resubmit"
+            status = STATUS_RESUBMIT
+
         final_grade = f"{grade_text} ({score}/10)"
 
-        return final_grade, content.get("feedback", "No feedback"), content.get("status", STATUS_GRADED)
+        return final_grade, content.get("feedback", "No feedback"), status
     except Exception as e:
         print(f"Error calling Ollama: {e}")
         return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
 
-def send_email(to_email, student_name, course, assignment, grade, feedback):
+def get_or_create_master_gradebook(client):
+    """Finds or creates the one Master spreadsheet for all student tabs."""
+    try:
+        return client.open(MASTER_GRADEBOOK_NAME)
+    except gspread.SpreadsheetNotFound:
+        print(f"  -> Creating Master Gradebook: {MASTER_GRADEBOOK_NAME}...")
+        spreadsheet = client.create(MASTER_GRADEBOOK_NAME)
+        # Note: We don't share the Master file automatically with everyone 
+        # because students would see each other's tabs. 
+        # You should manually share it with yourself if it's owned by the service account.
+        return spreadsheet
+
+def get_or_create_student_tab(spreadsheet, student_name):
+    """Finds or creates a specific tab (worksheet) for a student inside the master."""
+    # Tab name: Use "FirstLast" (max 31 chars for Sheets tabs)
+    tab_name = student_name[:30].strip()
+    
+    try:
+        return spreadsheet.worksheet(tab_name)
+    except gspread.WorksheetNotFound:
+        print(f"  -> Creating new tab for {student_name}...")
+        worksheet = spreadsheet.add_worksheet(title=tab_name, rows=100, cols=5)
+        
+        # Setup headers
+        worksheet.update('A1:E1', [['Date', 'Course', 'Assignment', 'Grade', 'Feedback']])
+        worksheet.format('A1:E1', {'textFormat': {'bold': True}})
+        return worksheet
+
+def append_to_student_tab(worksheet, course, assignment, grade, feedback):
+    """Appends results to the specific student worksheet."""
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        worksheet.append_row([now, course, assignment, grade, feedback])
+    except Exception as e:
+        print(f"  -> Failed to update student tab: {e}")
+
+def send_email(to_email, student_name, course, assignment, grade, feedback, gradebook_url=""):
     """Sends an email with the grade and feedback using an HTML template."""
     if not SENDER_EMAIL or "your_email" in SENDER_EMAIL:
         print("Skipping email: SENDER_EMAIL not configured.")
@@ -160,6 +217,15 @@ def send_email(to_email, student_name, course, assignment, grade, feedback):
             html_content = html_content.replace("{{Grade}}", grade)
             html_content = html_content.replace("{{Feedback}}", feedback)
             html_content = html_content.replace("{{NextStep}}", next_step)
+            
+            # If link is missing, remove the entire button section
+            if not gradebook_url or gradebook_url == "#":
+                import re
+                # This regex removes everything between the placeholders
+                html_content = re.sub(r"<!-- GradebookSection -->.*?<!-- /GradebookSection -->", "", html_content, flags=re.DOTALL)
+                print(f"  -> Info: Gradebook link missing for {student_name}, hiding button in email.")
+            else:
+                html_content = html_content.replace("{{GradebookLink}}", gradebook_url)
             
             msg.attach(MIMEText(html_content, 'html'))
         except FileNotFoundError:
@@ -231,6 +297,7 @@ def main():
     col_code = get_column_index(headers, [COL_CODE])
     col_email = get_column_index(headers, [COL_EMAIL])
     col_name = get_column_index(headers, [COL_NAME])
+    col_gradebook = get_column_index(headers, [COL_GRADEBOOK_LINK])
 
     # If critical columns needed for grading shouldn't be guessed, you can hardcode indices or error out
     if not (col_course and col_assignment and col_code):
@@ -248,8 +315,14 @@ def main():
     print("Starting grading loop...")
     updates_made = 0
 
+    # Pre-open master gradebook to save resources
+    master_gradebook = None
+    try:
+        master_gradebook = get_or_create_master_gradebook(client)
+    except Exception as m_err:
+        print(f"  -> Warning: Master Gradebook offline: {m_err}")
+
     # Iterate rows (skipping header)
-    # Note: 'rows' is a list of lists. gspread is 1-indexed for cell updates.
     for i, row in enumerate(rows[1:], start=2):
         # Safety for short rows
         current_status = row[col_status - 1] if (col_status - 1) < len(row) else ""
@@ -293,8 +366,31 @@ def main():
             # Use test recipient if set, otherwise real student email
             target_email = TEST_RECIPIENT if TEST_RECIPIENT else student_email
 
+            # Personal Gradebook Logic (Tabs Mode)
+            gradebook_url = ""
+            if col_gradebook:
+                gradebook_url = row[col_gradebook - 1] if (col_gradebook - 1) < len(row) else ""
+            
+            # If no link, or we want to ensure it's up to date
+            try:
+                if master_gradebook and student_name:
+                    student_tab = get_or_create_student_tab(master_gradebook, student_name)
+                    append_to_student_tab(student_tab, course, assignment, grade, feedback)
+                    
+                    # Create link specifically to this tab
+                    # Format: https://docs.google.com/spreadsheets/d/ID/edit#gid=WORKSHEET_ID
+                    tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
+                    
+                    # Update URL in master if missing
+                    if not gradebook_url or gradebook_url == "#":
+                        gradebook_url = tab_link
+                        if col_gradebook:
+                            sheet.update_cell(i, col_gradebook, gradebook_url)
+            except Exception as gradebook_err:
+                print(f"  -> Gradebook Sync Error: {gradebook_err}")
+
             if target_email:
-                send_email(target_email, student_name, course, assignment, grade, feedback)
+                send_email(target_email, student_name, course, assignment, grade, feedback, gradebook_url)
             else:
                 print("  -> No email address found, skipping email.")
 
