@@ -130,7 +130,8 @@ def main():
         current_status = row[col_status - 1] if (col_status - 1) < len(row) else ""
         
         # Check if we should grade this
-        if current_status.strip() == STATUS_NEW:
+        s = current_status.strip()
+        if s == STATUS_NEW or s == "":
             course = row[col_course - 1] if (col_course - 1) < len(row) else "Unknown Course"
             assignment = row[col_assignment - 1] if (col_assignment - 1) < len(row) else "Unknown Assignment"
             code = row[col_code - 1] if (col_code - 1) < len(row) else ""
