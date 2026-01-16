@@ -21,7 +21,7 @@ OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
 # AI Provider Config
 AI_PROVIDER = os.getenv("AI_PROVIDER", "ollama") # "ollama" or "groq"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 CREDENTIALS_FILE = "credentials.json"
@@ -141,10 +141,11 @@ Output format (strict JSON):
         payload = {
             "model": GROQ_MODEL,
             "messages": [
-                {"role": "system", "content": "You are a coding teacher grading student work. Output valid JSON only."},
+                {"role": "system", "content": "You are a coding teacher grading student work. You must always output responses in valid JSON format."},
                 {"role": "user", "content": prompt}
             ],
-            "response_format": {"type": "json_object"}
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1 
         }
     else:
         # Default to Ollama
@@ -182,7 +183,10 @@ Output format (strict JSON):
 
         return final_grade, content.get("feedback", "No feedback"), status
     except Exception as e:
-        print(f"Error calling AI ({AI_PROVIDER}): {e}")
+        if 'response' in locals() and hasattr(response, 'text'):
+            print(f"Error calling AI ({AI_PROVIDER}): {e} - Response: {response.text}")
+        else:
+            print(f"Error calling AI ({AI_PROVIDER}): {e}")
         return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
 
 def get_or_create_master_gradebook(client):
