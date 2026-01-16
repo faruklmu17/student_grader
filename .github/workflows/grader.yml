@@ -35,6 +35,8 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           AI_PROVIDER: ${{ secrets.AI_PROVIDER || 'groq' }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          MASTER_GRADEBOOK_ID: ${{ secrets.MASTER_GRADEBOOK_ID }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
           # Fallback for Ollama if needed
           OLLAMA_URL: ${{ secrets.OLLAMA_URL }} 
           OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL }}
