@@ -351,6 +351,7 @@ def main():
 
     print("Starting grading loop...")
     updates_made = 0
+    cell_updates = []
 
     # Pre-open master gradebook to save resources
     master_gradebook = None
@@ -379,57 +380,48 @@ def main():
             
             grade, feedback, new_status = ask_llama(course, assignment, code)
             
-            # Update sheet
-            # We construct a batch update or just update cells one by one for simplicity seeing usage volume
-            
+            # Prepare updates for main sheet
             if col_grade:
-                sheet.update_cell(i, col_grade, grade)
+                cell_updates.append(gspread.Cell(i, col_grade, grade))
             if col_feedback:
-                sheet.update_cell(i, col_feedback, feedback)
+                cell_updates.append(gspread.Cell(i, col_feedback, feedback))
             
-            sheet.update_cell(i, col_status, new_status)
+            cell_updates.append(gspread.Cell(i, col_status, new_status))
+            
             print(f"  -> Result: {grade} | Status: {new_status}")
             updates_made += 1
 
-            # Send Email
-            student_email = ""
-            if col_email:
-                student_email = row[col_email - 1] if (col_email - 1) < len(row) else ""
-            
-            student_name = ""
-            if col_name:
-                student_name = row[col_name - 1] if (col_name - 1) < len(row) else "Student"
-
-            # Use test recipient if set, otherwise real student email
-            target_email = TEST_RECIPIENT if TEST_RECIPIENT else student_email
+            # Send Email Data Prep
+            student_email = row[col_email - 1] if col_email and (col_email - 1) < len(row) else ""
+            student_name = row[col_name - 1] if col_name and (col_name - 1) < len(row) else "Student"
+            gradebook_url = row[col_gradebook - 1] if col_gradebook and (col_gradebook - 1) < len(row) else ""
 
             # Personal Gradebook Logic (Tabs Mode)
-            gradebook_url = ""
-            if col_gradebook:
-                gradebook_url = row[col_gradebook - 1] if (col_gradebook - 1) < len(row) else ""
-            
-            # If no link, or we want to ensure it's up to date
             try:
                 if master_gradebook and student_name:
                     student_tab = get_or_create_student_tab(master_gradebook, student_name)
                     append_to_student_tab(student_tab, course, assignment, grade, feedback)
                     
-                    # Create link specifically to this tab
-                    # Format: https://docs.google.com/spreadsheets/d/ID/edit#gid=WORKSHEET_ID
                     tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
-                    
-                    # Update URL in master if missing
                     if not gradebook_url or gradebook_url == "#":
                         gradebook_url = tab_link
                         if col_gradebook:
-                            sheet.update_cell(i, col_gradebook, gradebook_url)
+                            cell_updates.append(gspread.Cell(i, col_gradebook, gradebook_url))
             except Exception as gradebook_err:
                 print(f"  -> Gradebook Sync Error: {gradebook_err}")
 
+            # Send Email immediately (don't batch email sending)
+            target_email = TEST_RECIPIENT if TEST_RECIPIENT else student_email
             if target_email:
                 send_email(target_email, student_name, course, assignment, grade, feedback, gradebook_url)
-            else:
-                print("  -> No email address found, skipping email.")
+
+    # 🚀 APPLY BATCH UPDATES AT THE END
+    if cell_updates:
+        print(f"Finalizing updates to Google Sheet...")
+        try:
+            sheet.update_cells(cell_updates)
+        except Exception as e:
+            print(f"CRITICAL ERROR: Failed to update Google Sheet: {e}")
 
     if updates_made == 0:
         print("No new submissions to grade.")
