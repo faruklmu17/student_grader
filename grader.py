@@ -220,20 +220,24 @@ def get_or_create_student_tab(spreadsheet, student_name):
         return spreadsheet.worksheet(tab_name)
     except gspread.WorksheetNotFound:
         print(f"  -> Creating new tab for {student_name}...")
-        worksheet = spreadsheet.add_worksheet(title=tab_name, rows=100, cols=5)
+        worksheet = spreadsheet.add_worksheet(title=tab_name, rows=100, cols=6)
         
-        # Setup headers
-        worksheet.update('A1:E1', [['Date', 'Course', 'Assignment', 'Grade', 'Feedback']])
-        worksheet.format('A1:E1', {'textFormat': {'bold': True}})
+        # Setup professional headers
+        worksheet.update('A1:B1', [['STUDENT GRADEBOOK:', student_name]])
+        worksheet.format('A1', {'textFormat': {'bold': True, 'fontSize': 12}})
+        
+        headers = [['Date', 'Student Name', 'Course', 'Assignment', 'Grade', 'Feedback']]
+        worksheet.update('A3:F3', headers)
+        worksheet.format('A3:F3', {'textFormat': {'bold': True}, 'backgroundColor': {'red': 0.9, 'green': 0.9, 'blue': 0.9}})
         return worksheet
 
-def append_to_student_tab(worksheet, course, assignment, grade, feedback):
+def append_to_student_tab(worksheet, student_name, course, assignment, grade, feedback):
     """Appends results to the specific student worksheet."""
     try:
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        worksheet.append_row([now, course, assignment, grade, feedback])
+        worksheet.append_row([now, student_name, course, assignment, grade, feedback])
     except Exception as e:
-        print(f"  -> Failed to update student tab: {e}")
+        print(f"  -> Failed to update student tab for {student_name}: {e}")
 
 def send_email(to_email, student_name, course, assignment, grade, feedback, gradebook_url=""):
     """Sends an email with the grade and feedback using an HTML template."""
@@ -343,7 +347,7 @@ def main():
     col_assignment = get_column_index(headers, [COL_ASSIGNMENT])
     col_code = get_column_index(headers, [COL_CODE])
     col_email = get_column_index(headers, [COL_EMAIL])
-    col_name = get_column_index(headers, [COL_NAME])
+    col_name = get_column_index(headers, [COL_NAME, "Name", "Student"])
     col_gradebook = get_column_index(headers, [COL_GRADEBOOK_LINK])
 
     # If critical columns needed for grading shouldn't be guessed, you can hardcode indices or error out
@@ -410,7 +414,7 @@ def main():
             try:
                 if master_gradebook and student_name:
                     student_tab = get_or_create_student_tab(master_gradebook, student_name)
-                    append_to_student_tab(student_tab, course, assignment, grade, feedback)
+                    append_to_student_tab(student_tab, student_name, course, assignment, grade, feedback)
                     
                     tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
                     if not gradebook_url or gradebook_url == "#":
