@@ -37,6 +37,7 @@ COL_GRADEBOOK_LINK = "Gradebook Link"
 
 # Master Gradebook Config
 MASTER_GRADEBOOK_NAME = "Master Student Gradebook"
+MASTER_GRADEBOOK_ID = os.getenv("MASTER_GRADEBOOK_ID")
 
 # Email Config
 SMTP_SERVER = "smtp.gmail.com"
@@ -191,15 +192,24 @@ Output format (strict JSON):
 
 def get_or_create_master_gradebook(client):
     """Finds or creates the one Master spreadsheet for all student tabs."""
+    if MASTER_GRADEBOOK_ID:
+        try:
+            return client.open_by_key(MASTER_GRADEBOOK_ID)
+        except Exception as e:
+            print(f"  -> Error opening Master Gradebook by ID: {e}")
+
     try:
         return client.open(MASTER_GRADEBOOK_NAME)
     except gspread.SpreadsheetNotFound:
         print(f"  -> Creating Master Gradebook: {MASTER_GRADEBOOK_NAME}...")
-        spreadsheet = client.create(MASTER_GRADEBOOK_NAME)
-        # Note: We don't share the Master file automatically with everyone 
-        # because students would see each other's tabs. 
-        # You should manually share it with yourself if it's owned by the service account.
-        return spreadsheet
+        try:
+            return client.create(MASTER_GRADEBOOK_NAME)
+        except Exception as e:
+            if "403" in str(e):
+                print(f"  -> CRITICAL: Cannot create sheet (Drive quota exceeded).")
+                print(f"     Please create a sheet manually, share it with the service account,")
+                print(f"     and add MASTER_GRADEBOOK_ID to your .env file.")
+            raise e
 
 def get_or_create_student_tab(spreadsheet, student_name):
     """Finds or creates a specific tab (worksheet) for a student inside the master."""
