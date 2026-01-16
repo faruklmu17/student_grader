@@ -15,8 +15,15 @@ load_dotenv()
 # ---------- CONFIG YOU MUST EDIT ----------
 SHEET_NAME = "Student Grading"      # your spreadsheet name
 TAB_NAME = "Form Responses 1"         # your sheet tab name (bottom left)
-OLLAMA_MODEL = "llama3:latest"
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3:latest")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+
+# AI Provider Config
+AI_PROVIDER = os.getenv("AI_PROVIDER", "ollama") # "ollama" or "groq"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama3-70b-8192")
+GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
 CREDENTIALS_FILE = "credentials.json"
 COL_COURSE = "Course Name"
 COL_ASSIGNMENT = "Assignment Number"
@@ -121,18 +128,44 @@ Output format (strict JSON):
 }}
 """
     
-    payload = {
-        "model": OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
-        "format": "json" 
-    }
+    payload = {}
+    url = ""
+    headers = {}
+
+    if AI_PROVIDER == "groq":
+        url = GROQ_URL
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": "You are a coding teacher grading student work. Output valid JSON only."},
+                {"role": "user", "content": prompt}
+            ],
+            "response_format": {"type": "json_object"}
+        }
+    else:
+        # Default to Ollama
+        url = OLLAMA_URL
+        payload = {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json" 
+        }
 
     try:
-        response = requests.post(OLLAMA_URL, json=payload)
+        response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
-        content = json.loads(data["response"])
+        
+        if AI_PROVIDER == "groq":
+            content_str = data["choices"][0]["message"]["content"]
+            content = json.loads(content_str)
+        else:
+            content = json.loads(data["response"])
         
         # Format grade to include score
         score = content.get("score", 0)
@@ -149,7 +182,7 @@ Output format (strict JSON):
 
         return final_grade, content.get("feedback", "No feedback"), status
     except Exception as e:
-        print(f"Error calling Ollama: {e}")
+        print(f"Error calling AI ({AI_PROVIDER}): {e}")
         return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
 
 def get_or_create_master_gradebook(client):
