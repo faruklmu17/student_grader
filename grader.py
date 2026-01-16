@@ -419,16 +419,18 @@ def main():
                     
                     tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
                     
-                    # Ensure DASHBOARD_URL is an absolute link if possible
-                    base_url = DASHBOARD_URL
-                    if not base_url.startswith("http"):
-                        # Fallback for local testing or incomplete config
-                        base_url = "dashboard.html"
+                    tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
                     
-                    # 🚀 ALWAYS use the Dashboard link for the primary display
-                    dashboard_link = f"{base_url}?student={student_name.replace(' ', '%20')}"
+                    # Dashboard Link (Enhanced View)
+                    # We prioritize the absolute DASHBOARD_URL from env/secrets
+                    if DASHBOARD_URL and DASHBOARD_URL.startswith("http"):
+                        dashboard_link = f"{DASHBOARD_URL}?student={student_name.replace(' ', '%20')}"
+                    else:
+                        # If no absolute URL is set, we fallback to the raw Google Sheet tab
+                        dashboard_link = tab_link
+                        print(f"  -> Warning: DASHBOARD_URL not set to a full URL (starting with http). Falling back to Google Sheet link.")
                     
-                    # Update internal tracking to use dashboard link instead of raw sheet link
+                    # ALWAYS update the tracking variable with the best available link
                     gradebook_url = dashboard_link
                     
                     if col_gradebook:
