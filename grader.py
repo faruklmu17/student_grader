@@ -45,6 +45,7 @@ SMTP_PORT = 587
 SENDER_EMAIL = os.getenv("EMAIL_SENDER")
 SENDER_PASSWORD = os.getenv("EMAIL_PASSWORD")
 TEST_RECIPIENT = "farukqmul@gmail.com"  # Set to None to send to actual students
+DASHBOARD_URL = os.getenv("DASHBOARD_URL", "dashboard.html") # e.g. "https://yourdomain.com/dashboard.html"
 # -----------------------------------------
 
 STATUS_NEW = "Not Graded"
@@ -417,8 +418,12 @@ def main():
                     append_to_student_tab(student_tab, student_name, course, assignment, grade, feedback)
                     
                     tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
+                    
+                    # Dashboard Link (Enhanced View)
+                    dashboard_link = f"{DASHBOARD_URL}?student={student_name.replace(' ', '%20')}"
+                    
                     if not gradebook_url or gradebook_url == "#":
-                        gradebook_url = tab_link
+                        gradebook_url = dashboard_link
                         if col_gradebook:
                             cell_updates.append(gspread.Cell(i, col_gradebook, gradebook_url))
             except Exception as gradebook_err:

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard | Grading Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --success: #10b981;
+            --danger: #ef4444;
+            --dark: #0f172a;
+            --darker: #020617;
+            --light: #f8fafc;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--darker);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        /* Ambient Background */
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+            padding: 1.5rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            backdrop-filter: blur(12px);
+        }
+
+        .user-info h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-info p {
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--glass);
+            padding: 1.5rem;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h2::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--glass-border);
+        }
+
+        .assignment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 2rem;
+            align-items: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(8px);
+        }
+
+        .card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .date-badge {
+            text-align: center;
+            padding-right: 2rem;
+            border-right: 1px solid var(--glass-border);
+        }
+
+        .date-day {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .date-month {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+
+        .info h3 {
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .info .course {
+            font-size: 0.875rem;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .feedback {
+            font-size: 0.935rem;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .grade-pill {
+            padding: 0.5rem 1.25rem;
+            border-radius: 99px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .grade-pass {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .grade-resubmit {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        /* Loading & Error States */
+        #loader {
+            text-align: center;
+            padding: 4rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--glass-border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .date-badge {
+                border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+                padding: 0 0 1rem 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-glow"></div>
+    <div class="container">
+        <header>
+            <div class="user-info">
+                <p>Welcome back,</p>
+                <h1 id="student-name">Student Dashboard</h1>
+            </div>
+            <div class="logo">
+                <span style="font-weight: 800; color: var(--primary);">GRADE</span>PORTAL
+            </div>
+        </header>
+
+        <div id="loader">
+            <div class="spinner"></div>
+            <p>Loading your grades...</p>
+        </div>
+
+        <div id="dashboard-content" style="display: none;">
+            <div class="stats">
+                <div class="stat-card">
+                    <span class="stat-value" id="stat-total">0</span>
+                    <span class="stat-label">Assignments</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="stat-avg">0%</span>
+                    <span class="stat-label">Avg. Score</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="stat-pass">0</span>
+                    <span class="stat-label">Passed</span>
+                </div>
+            </div>
+
+            <h2>Recent Submissions</h2>
+            <div class="assignment-list" id="assignment-list">
+                <!-- Cards will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const SPREADSHEET_ID = '1jpOz2TefIqmkJtI1efWDxurn8x8ZYxaw0ghXxo1ckm0';
+
+        async function fetchGrades() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let studentName = urlParams.get('student');
+            let sheetName = urlParams.get('name') || studentName; // Fallback to 'student' param
+
+            if (!sheetName) {
+                document.getElementById('loader').innerHTML = '<p style="color: var(--danger)">No student name provided in URL (?student=Name)</p>';
+                return;
+            }
+
+            document.getElementById('student-name').textContent = sheetName;
+
+            try {
+                // We use the Google Visualization API to get the sheet as a CSV/JSON
+                // This requires the sheet to be "Shared with anyone with the link"
+                const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+
+                const response = await fetch(url);
+                const text = await response.text();
+                // Google returns a weird wrapper, we need to strip it
+                const json = JSON.parse(text.substring(47).slice(0, -2));
+
+                renderDashboard(json.table.rows);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loader').innerHTML = '<p style="color: var(--danger)">Failed to load data. Make sure the spreadsheet is shared and the student name is correct.</p>';
+            }
+        }
+
+        function renderDashboard(rows) {
+            // Skip the first two header rows (based on our Python script layout)
+            // Row 0: Title, Row 1: Empty, Row 2: Headers
+            const dataRows = rows.slice(3);
+            const list = document.getElementById('assignment-list');
+            list.innerHTML = '';
+
+            let totalScore = 0;
+            let passCount = 0;
+
+            if (dataRows.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 2rem;">No assignments graded yet.</p>';
+            }
+
+            dataRows.reverse().forEach(row => {
+                const cells = row.c;
+                const rawDate = cells[0]?.v || ''; // Date
+                const sName = cells[1]?.v || ''; // Student Name
+                const course = cells[2]?.v || ''; // Course
+                const assign = cells[3]?.v || ''; // Assignment
+                const grade = cells[4]?.v || ''; // Grade
+                const feedback = cells[5]?.v || ''; // Feedback
+
+                // Extract score (e.g. from "Pass (8/10)")
+                const scoreMatch = grade.match(/(\d+)\/10/);
+                const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+                totalScore += score;
+                if (grade.includes('Pass')) passCount++;
+
+                const isPass = grade.includes('Pass');
+                const dateObj = new Date(rawDate);
+                const day = dateObj.getDate() || '--';
+                const month = dateObj.toLocaleString('default', { month: 'short' }) || '--';
+
+                const card = `
+                    <div class="card">
+                        <div class="date-badge">
+                            <span class="date-day">${day}</span>
+                            <span class="date-month">${month}</span>
+                        </div>
+                        <div class="info">
+                            <span class="course">${course}</span>
+                            <h3>${assign}</h3>
+                            <p class="feedback">"${feedback}"</p>
+                        </div>
+                        <div class="grade-pill ${isPass ? 'grade-pass' : 'grade-resubmit'}">
+                            ${grade}
+                        </div>
+                    </div>
+                `;
+                list.innerHTML += card;
+            });
+
+            // Update Stats
+            document.getElementById('stat-total').textContent = dataRows.length;
+            document.getElementById('stat-pass').textContent = passCount;
+            const avg = dataRows.length > 0 ? Math.round((totalScore / (dataRows.length * 10)) * 100) : 0;
+            document.getElementById('stat-avg').textContent = avg + '%';
+
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('dashboard-content').style.display = 'block';
+        }
+
+        fetchGrades();
+    </script>
+</body>
+
+</html>
