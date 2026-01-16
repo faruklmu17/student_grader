@@ -419,13 +419,20 @@ def main():
                     
                     tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
                     
-                    # Dashboard Link (Enhanced View)
-                    dashboard_link = f"{DASHBOARD_URL}?student={student_name.replace(' ', '%20')}"
+                    # Ensure DASHBOARD_URL is an absolute link if possible
+                    base_url = DASHBOARD_URL
+                    if not base_url.startswith("http"):
+                        # Fallback for local testing or incomplete config
+                        base_url = "dashboard.html"
                     
-                    if not gradebook_url or gradebook_url == "#":
-                        gradebook_url = dashboard_link
-                        if col_gradebook:
-                            cell_updates.append(gspread.Cell(i, col_gradebook, gradebook_url))
+                    # 🚀 ALWAYS use the Dashboard link for the primary display
+                    dashboard_link = f"{base_url}?student={student_name.replace(' ', '%20')}"
+                    
+                    # Update internal tracking to use dashboard link instead of raw sheet link
+                    gradebook_url = dashboard_link
+                    
+                    if col_gradebook:
+                        cell_updates.append(gspread.Cell(i, col_gradebook, gradebook_url))
             except Exception as gradebook_err:
                 print(f"  -> Gradebook Sync Error: {gradebook_err}")
 
