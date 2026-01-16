@@ -212,6 +212,75 @@
             border: 1px solid rgba(239, 68, 68, 0.2);
         }
 
+        /* Code Block Styling */
+        .code-container {
+            grid-column: 1 / -1;
+            margin-top: 1rem;
+            display: none;
+            animation: slideDown 0.3s ease forwards;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px 12px 0 0;
+            border: 1px solid var(--glass-border);
+            border-bottom: none;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .code-block {
+            background: #000;
+            padding: 1.25rem;
+            border-radius: 0 0 12px 12px;
+            border: 1px solid var(--glass-border);
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            color: #e2e8f0;
+            white-space: pre;
+        }
+
+        .toggle-code-btn {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 0.4rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toggle-code-btn:hover {
+            background: rgba(99, 102, 241, 0.2);
+            transform: translateY(-1px);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         /* Loading & Error States */
         #loader {
             text-align: center;
@@ -346,6 +415,7 @@
                 const assign = cells[3]?.v || ''; // Assignment
                 const grade = cells[4]?.v || ''; // Grade
                 const feedback = cells[5]?.v || ''; // Feedback
+                const code = cells[6]?.v || ''; // Submitted Code
 
                 // Extract score (e.g. from "Pass (8/10)")
                 const scoreMatch = grade.match(/(\d+)\/10/);
@@ -366,14 +436,27 @@
                         </div>
                         <div class="info">
                             <span class="course">${course}</span>
-                            <h3>${assign}</h3>
-                            <p class="feedback">"${feedback}"</p>
+                                <h3>${assign}</h3>
+                                <p class="feedback">"${feedback}"</p>
+                                ${code ? `
+                                <button class="toggle-code-btn" onclick="toggleCode(this)">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                                    View Submission
+                                </button>` : ''}
+                            </div>
+                            <div class="grade-pill ${isPass ? 'grade-pass' : 'grade-resubmit'}">
+                                ${grade}
+                            </div>
+                            ${code ? `
+                            <div class="code-container" style="display: none;">
+                                <div class="code-header">
+                                    <span>Python Submission</span>
+                                    <span style="font-size: 10px; opacity: 0.5;">Read-Only</span>
+                                </div>
+                                <div class="code-block">${escapeHtml(code)}</div>
+                            </div>` : ''}
                         </div>
-                        <div class="grade-pill ${isPass ? 'grade-pass' : 'grade-resubmit'}">
-                            ${grade}
-                        </div>
-                    </div>
-                `;
+                    `;
                 list.innerHTML += card;
             });
 
@@ -385,6 +468,23 @@
 
             document.getElementById('loader').style.display = 'none';
             document.getElementById('dashboard-content').style.display = 'block';
+        }
+
+        function toggleCode(btn) {
+            const card = btn.closest('.card');
+            const container = card.querySelector('.code-container');
+            const isHidden = container.style.display === 'none' || !container.style.display;
+
+            container.style.display = isHidden ? 'block' : 'none';
+            btn.innerHTML = isHidden ?
+                `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"></path></svg> Hide Submission` :
+                `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg> View Submission`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         fetchGrades();

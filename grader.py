@@ -221,22 +221,22 @@ def get_or_create_student_tab(spreadsheet, student_name):
         return spreadsheet.worksheet(tab_name)
     except gspread.WorksheetNotFound:
         print(f"  -> Creating new tab for {student_name}...")
-        worksheet = spreadsheet.add_worksheet(title=tab_name, rows=100, cols=6)
+        worksheet = spreadsheet.add_worksheet(title=tab_name, rows=100, cols=7)
         
         # Setup professional headers
         worksheet.update('A1:B1', [['STUDENT GRADEBOOK:', student_name]])
         worksheet.format('A1', {'textFormat': {'bold': True, 'fontSize': 12}})
         
-        headers = [['Date', 'Student Name', 'Course', 'Assignment', 'Grade', 'Feedback']]
-        worksheet.update('A3:F3', headers)
-        worksheet.format('A3:F3', {'textFormat': {'bold': True}, 'backgroundColor': {'red': 0.9, 'green': 0.9, 'blue': 0.9}})
+        headers = [['Date', 'Student Name', 'Course', 'Assignment', 'Grade', 'Feedback', 'Submitted Code']]
+        worksheet.update('A3:G3', headers)
+        worksheet.format('A3:G3', {'textFormat': {'bold': True}, 'backgroundColor': {'red': 0.9, 'green': 0.9, 'blue': 0.9}})
         return worksheet
 
-def append_to_student_tab(worksheet, student_name, course, assignment, grade, feedback):
+def append_to_student_tab(worksheet, student_name, course, assignment, grade, feedback, code):
     """Appends results to the specific student worksheet."""
     try:
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        worksheet.append_row([now, student_name, course, assignment, grade, feedback])
+        worksheet.append_row([now, student_name, course, assignment, grade, feedback, code])
     except Exception as e:
         print(f"  -> Failed to update student tab for {student_name}: {e}")
 
@@ -415,7 +415,7 @@ def main():
             try:
                 if master_gradebook and student_name:
                     student_tab = get_or_create_student_tab(master_gradebook, student_name)
-                    append_to_student_tab(student_tab, student_name, course, assignment, grade, feedback)
+                    append_to_student_tab(student_tab, student_name, course, assignment, grade, feedback, code)
                     
                     tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
                     
