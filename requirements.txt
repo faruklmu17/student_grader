@@ -2,3 +2,4 @@ python-dotenv
 gspread
 google-auth
 requests
+google-api-python-client
