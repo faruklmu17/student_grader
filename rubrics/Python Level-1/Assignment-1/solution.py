@@ -1,52 +1,73 @@
-# 1. Print words and definitions
+# Assignment 1: Introduction to Python
+# This script covers the basics of printing, variables, comments, and syntax.
+
+# 1. Printing key terms
+# We use the print() function to display text on the screen.
 print("Variable")
-print("Definition: A container for storing data values.")
-
 print("String")
-print("Definition: A sequence of characters enclosed in quotes.")
-
 print("Syntax")
-print("Definition: The set of rules that defines the structure of a language.")
 
-# 2. Single line comment example
-# This is a comment that takes up only one line.
+# 2. Printing definitions
+# A Variable is a container used to store data values.
+print("Variable: A container for storing data values.")
 
-# 3. Print specific sentence
+# A String is a sequence of characters (text) wrapped in quotes.
+print("String: A sequence of characters enclosed in 'single' or \"double\" quotes.")
+
+# Syntax refers to the set of rules that defines how a Python program is written and interpreted.
+print("Syntax: The set of rules that define the structure of the language.")
+
+# 3. Single-line comments
+# We use the hash symbol (#) to write a comment that only takes up one line.
+# This line is a comment and will not be executed by Python!
+
+# 4. Printing a specific sentence
 print("I am learning Python.")
 
-# 4. Create 4 variables (2 numbers, 2 strings)
-num1 = 10
-num2 = 3.14
-str1 = "Hello"
-str2 = "World"
+# 5. Creating and printing four variables
+# Here we create two variables for numbers and two for strings.
+age = 25              # A number (integer)
+price = 19.99         # A number (float)
+name = "Alice"        # A string
+course = "Python 101" # A string
 
-# Print them
-print(num1)
-print(num2)
-print(str1)
-print(str2)
+# Printing the variables to see their current values
+print("Initial Values:")
+print(age)
+print(price)
+print(name)
+print(course)
 
-# 5. Reassign variables
-# When we assign a new value to an existing variable, the old value is replaced.
-num1 = 100
-num2 = 9.99
-str1 = "Goodbye"
-str2 = "Python"
+# 6. Assigning new values (Reassignment)
+# When we assign a new value to a variable that already exists, 
+# Python replaces the old value with the new one. This is called reassignment.
+age = 30
+price = 24.50
+name = "Bob"
+course = "Advanced Python"
 
-print("--- After Reassignment ---")
-print(num1)
-print(num2)
-print(str1)
-print(str2)
+print("\nUpdated Values:")
+print(age)
+print(price)
+print(name)
+print(course)
 
-# 6. Variable Naming Rules
-# - Must start with a letter or underscore
-# - Cannot start with a number
-# - Case sensitive (age, Age and AGE are different)
-# - Cannot contain alpha-numeric characters and underscores (A-z, 0-9, and _ )
-# - Cannot be a Python keyword
+# Detailed Explanation:
+# When we wrote 'age = 30', Python looked for the existing 'age' variable
+# and updated its memory to store '30' instead of '25'. The previous value 
+# is gone forever unless we stored it somewhere else first.
 
-# 7. The Assignment Operator
-# The '=' sign is the assignment operator. 
-# It assigns the value on the right to the variable on the left.
-x = 5 # Assigns 5 to x
+# 7. Rules for creating variables
+# - Variable names must start with a letter or an underscore (_).
+# - Variable names cannot start with a number.
+# - Variable names can only contain alpha-numeric characters and underscores (A-z, 0-9, and _ ).
+# - Variable names are case-sensitive (age, Age, and AGE are three different variables).
+# - Variable names cannot be Python keywords (like 'print', 'if', 'while', etc.).
+
+# 8. The Assignment Operator
+# The '=' sign is known as the assignment operator in Python.
+# It is used to assign the value on the right-hand side to the variable on the left-hand side.
+
+# Example:
+score = 100 
+# In the example above, '=' takes the value 100 and assigns it to the variable named 'score'.

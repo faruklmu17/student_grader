@@ -52,22 +52,61 @@ STATUS_NEW = "Not Graded"
 STATUS_GRADED = "Graded"
 STATUS_RESUBMIT = "Need Resubmit"
 
+def call_ai(provider: str, prompt: str) -> dict:
+    """Makes a request to the specified AI provider and returns the parsed JSON content."""
+    payload = {}
+    url = ""
+    headers = {}
+
+    if provider == "groq":
+        url = GROQ_URL
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": "You are a coding teacher grading student work. You must always output responses in valid JSON format."},
+                {"role": "user", "content": prompt}
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1 
+        }
+    else:
+        # Default to Ollama
+        url = OLLAMA_URL
+        payload = {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "format": "json" 
+        }
+
+    response = requests.post(url, json=payload, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    
+    if provider == "groq":
+        content_str = data["choices"][0]["message"]["content"]
+        return json.loads(content_str)
+    else:
+        return json.loads(data["response"])
+
 def ask_llama(course: str, assignment: str, code: str) -> tuple[str, str, str]:
     """
     Returns (grade, feedback, new_status).
+    Tries primary AI_PROVIDER, falls back to Ollama if Groq fails.
     """
     # --- RAG: REtrIEVAL ---
     base_rubric_path = os.path.join("rubrics", "general_rubric.md")
     rubric_content = "Use general Python best practices."
     
-    # Try to load general fallback first
     if os.path.exists(base_rubric_path):
         with open(base_rubric_path, "r") as f:
             rubric_content = f.read()
 
     solution_content = "No reference solution provided."
-    
-    # Clean filenames for path safety
     safe_course = course.strip().replace("/", "_")
     safe_assign = assignment.strip().replace("/", "_")
     
@@ -75,7 +114,6 @@ def ask_llama(course: str, assignment: str, code: str) -> tuple[str, str, str]:
     rubric_path = os.path.join(base_path, "rubric.md")
     solution_path = os.path.join(base_path, "solution.py")
 
-    # Override with specific rubric if it exists
     if os.path.exists(rubric_path):
         with open(rubric_path, "r") as f:
             rubric_content = f.read()
@@ -130,66 +168,48 @@ Output format (strict JSON):
 }}
 """
     
-    payload = {}
-    url = ""
-    headers = {}
+    content = None
+    applied_provider = AI_PROVIDER
 
-    if AI_PROVIDER == "groq":
-        url = GROQ_URL
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": GROQ_MODEL,
-            "messages": [
-                {"role": "system", "content": "You are a coding teacher grading student work. You must always output responses in valid JSON format."},
-                {"role": "user", "content": prompt}
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1 
-        }
-    else:
-        # Default to Ollama
-        url = OLLAMA_URL
-        payload = {
-            "model": OLLAMA_MODEL,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json" 
-        }
-
+    # Try Primary Provider
     try:
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-        
-        if AI_PROVIDER == "groq":
-            content_str = data["choices"][0]["message"]["content"]
-            content = json.loads(content_str)
-        else:
-            content = json.loads(data["response"])
-        
-        # Format grade to include score
-        score = content.get("score", 0)
-        
-        # We enforce the Pass (>= 5) logic in Python to avoid AI hallucination
-        if score >= 5:
-            grade_text = "Pass"
-            status = STATUS_GRADED
-        else:
-            grade_text = "Resubmit"
-            status = STATUS_RESUBMIT
-
-        final_grade = f"{grade_text} ({score}/10)"
-
-        return final_grade, content.get("feedback", "No feedback"), status
+        content = call_ai(AI_PROVIDER, prompt)
     except Exception as e:
-        if 'response' in locals() and hasattr(response, 'text'):
-            print(f"Error calling AI ({AI_PROVIDER}): {e} - Response: {response.text}")
+        print(f"  -> Primary AI Provider ({AI_PROVIDER}) failed: {e}")
+        
+        # Fallback Logic: If Groq fails, try Ollama
+        if AI_PROVIDER == "groq":
+            print("  -> Attempting fallback to Ollama...")
+            try:
+                content = call_ai("ollama", prompt)
+                applied_provider = "ollama (fallback)"
+            except Exception as e2:
+                print(f"  -> Fallback to Ollama also failed: {e2}")
+                return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
         else:
-            print(f"Error calling AI ({AI_PROVIDER}): {e}")
-        return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
+            return "Error", f"AI generation failed: {str(e)}", STATUS_NEW
+
+    if not content:
+        return "Error", "AI returned no content.", STATUS_NEW
+
+    # Process results
+    score = content.get("score", 0)
+    if score >= 5:
+        grade_text = "Pass"
+        status = STATUS_GRADED
+    else:
+        grade_text = "Resubmit"
+        status = STATUS_RESUBMIT
+
+    final_grade = f"{grade_text} ({score}/10)"
+    feedback = content.get("feedback", "No feedback")
+    
+    # Optional: tag feedback with provider if fallback happened
+    if "fallback" in applied_provider:
+        feedback += f"\n\n(Generated via local backup model)"
+
+    return final_grade, feedback, status
+
 
 def get_or_create_master_gradebook(client):
     """Finds or creates the one Master spreadsheet for all student tabs."""
