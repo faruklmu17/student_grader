@@ -21,45 +21,6 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-def call_ai(provider: str, prompt: str) -> dict:
-    """Makes a request to the specified AI provider (copied from grader.py)."""
-    payload = {}
-    url = ""
-    headers = {}
-
-    if provider == "groq":
-        url = GROQ_URL
-        headers = {
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": GROQ_MODEL,
-            "messages": [
-                {"role": "system", "content": "You are a coding teacher creating curriculum. You must always output responses in valid JSON format."},
-                {"role": "user", "content": prompt}
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1 
-        }
-    else:
-        url = OLLAMA_URL
-        payload = {
-            "model": OLLAMA_MODEL,
-            "prompt": prompt,
-            "stream": False,
-            "format": "json" 
-        }
-
-    response = requests.post(url, json=payload, headers=headers)
-    response.raise_for_status()
-    data = response.json()
-    
-    if provider == "groq":
-        content_str = data["choices"][0]["message"]["content"]
-        return json.loads(content_str)
-    else:
-        return json.loads(data["response"])
 
 def get_slides_content(presentation_id):
     """Fetches all text content from the presentation."""
@@ -74,60 +35,126 @@ def get_slides_content(presentation_id):
     for i, slide in enumerate(slides):
         title = ""
         body_text = []
+        notes = ""
         
-        # Look for Title and Body elements
+        # Look for Title and Body elements on the slide
         for element in slide.get("pageElements", []):
             if "shape" in element:
                 shape = element["shape"]
-                # Extract text
                 text_content = ""
                 if "text" in shape:
                     for text_run in shape["text"].get("textElements", []):
                         if "textRun" in text_run:
                             text_content += text_run["textRun"]["content"]
                 
-                # Check if it's a title placeholder
                 if "placeholder" in shape and shape["placeholder"].get("type") in ["TITLE", "CENTERED_TITLE"]:
                     title = text_content.strip()
                 else:
                     body_text.append(text_content.strip())
+
+        # Extract Speaker Notes
+        notes_page = slide.get("slideProperties", {}).get("notesPage", {})
+        for element in notes_page.get("pageElements", []):
+            if "shape" in element:
+                shape = element["shape"]
+                if "text" in shape:
+                    for text_run in shape["text"].get("textElements", []):
+                        if "textRun" in text_run:
+                            notes += text_run["textRun"]["content"]
 
         # Logic: Only process if "Assignment" is in the TITLE specifically
         if "assignment" in title.lower():
             assignments.append({
                 "index": i + 1,
                 "title": title,
-                "content": "\n".join(body_text).strip()
+                "content": "\n".join(body_text).strip(),
+                "notes": notes.strip()
             })
     
     return assignments
 
-def generate_rubric_and_solution(title, assignment_text):
+def generate_rubric_and_solution(title, assignment_text, notes):
     """Uses AI to generate rubric.md and solution.py contents."""
     prompt = f"""
 Given the following assignment instructions from a slide, generate a detailed grading rubric and a reference Python solution.
 
 TITLE: {title}
-ASSIGNMENT INSTRUCTIONS:
+INSTRUCTIONS:
 {assignment_text}
 
-OUTPUT FORMAT (JSON):
-{{
-  "assignment_name": "Assignment-X",
-  "rubric_md": "Full markdown content for rubric.md...",
-  "solution_py": "Full python code for solution.py..."
-}}
+SPEAKER NOTES (May contain source code or extra context):
+{notes}
 
-INSTRUCTIONS for Rubric:
-- Use a 10-point scoring system.
-- Include a 'Goal', 'Requirements', 'Scoring', and 'Common Mistakes & Feedback Guidance' section.
-- Be very specific about identifying factual errors vs syntax errors.
+OUTPUT FORMAT:
+Please output the rubric and the solution using these specific delimiters. 
 
-INSTRUCTIONS for Solution:
-- Include comments explaining every step.
-- Answer all questions asked in the instructions.
+===RUBRIC_START===
+(Markdown content here)
+===RUBRIC_END===
+
+===SOLUTION_START===
+(Python code here)
+===SOLUTION_END===
+
+CRITICAL: 
+- For the Solution, ensure you provide the final FIXED version of any code mentioned in the notes.
+- For the Rubric, list the specific bugs that need to be fixed (found in the notes/instructions).
 """
-    return call_ai(AI_PROVIDER, prompt)
+    # Use call_ai but expect raw text back
+    # We need to modify call_ai or just use a simpler version here
+    response = call_ai_raw(AI_PROVIDER, prompt)
+    
+    rubric = ""
+    solution = ""
+    
+    import re
+    r_match = re.search(r"===RUBRIC_START===(.*?)===RUBRIC_END===", response, re.DOTALL)
+    s_match = re.search(r"===SOLUTION_START===(.*?)===SOLUTION_END===", response, re.DOTALL)
+    
+    if r_match: rubric = r_match.group(1).strip()
+    if s_match: solution = s_match.group(1).strip()
+    
+    return {
+        "rubric_md": rubric,
+        "solution_py": solution
+    }
+
+def call_ai_raw(provider: str, prompt: str) -> str:
+    """Makes a request to the AI and returns the raw text."""
+    payload = {}
+    url = ""
+    headers = {}
+
+    if provider == "groq":
+        url = GROQ_URL
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "system", "content": "You are a coding teacher creating curriculum."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.1 
+        }
+    else:
+        url = OLLAMA_URL
+        payload = {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False
+        }
+
+    response = requests.post(url, json=payload, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    
+    if provider == "groq":
+        return data["choices"][0]["message"]["content"]
+    else:
+        return data["response"]
 
 def main():
     print(f"Syncing assignments from Slides: {PRESENTATION_ID}...")
@@ -165,7 +192,7 @@ def main():
             continue
 
         print(f"  -> Generating content for {assign_folder}...")
-        result = generate_rubric_and_solution(assign["title"], assign["content"])
+        result = generate_rubric_and_solution(assign["title"], assign["content"], assign["notes"])
         
         os.makedirs(target_dir, exist_ok=True)
         
