@@ -361,25 +361,27 @@
     </div>
 
     <script>
-        // CONFIG
-        const SPREADSHEET_ID = '1jpOz2TefIqmkJtI1efWDxurn8x8ZYxaw0ghXxo1ckm0';
-
         async function fetchGrades() {
             const urlParams = new URLSearchParams(window.location.search);
-            let studentName = urlParams.get('student');
-            let sheetName = urlParams.get('name') || studentName; // Fallback to 'student' param
+            const studentName = urlParams.get('student');
+            const spreadsheetId = urlParams.get('sheet');
 
-            if (!sheetName) {
+            if (!studentName) {
                 document.getElementById('loader').innerHTML = '<p style="color: var(--danger)">No student name provided in URL (?student=Name)</p>';
                 return;
             }
 
-            document.getElementById('student-name').textContent = sheetName;
+            if (!spreadsheetId) {
+                document.getElementById('loader').innerHTML = '<p style="color: var(--danger)">No spreadsheet ID provided in URL (?sheet=ID)</p>';
+                return;
+            }
+
+            document.getElementById('student-name').textContent = studentName;
 
             try {
                 // We use the Google Visualization API to get the sheet as a CSV/JSON
                 // This requires the sheet to be "Shared with anyone with the link"
-                const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+                const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(studentName)}`;
 
                 const response = await fetch(url);
                 const text = await response.text();

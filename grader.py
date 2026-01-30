@@ -436,23 +436,25 @@ def main():
                 if master_gradebook and student_name:
                     student_tab = get_or_create_student_tab(master_gradebook, student_name)
                     append_to_student_tab(student_tab, student_name, course, assignment, grade, feedback, code)
-                    
+
                     tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
-                    
-                    tab_link = f"{master_gradebook.url}#gid={student_tab.id}"
-                    
+
                     # Dashboard Link (Enhanced View)
                     # We prioritize the absolute DASHBOARD_URL from env/secrets
                     if DASHBOARD_URL and DASHBOARD_URL.startswith("http"):
-                        dashboard_link = f"{DASHBOARD_URL}?student={student_name.replace(' ', '%20')}"
+                        # Extract spreadsheet ID from the master gradebook URL
+                        # URL format: https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit
+                        spreadsheet_id = master_gradebook.id
+                        student_name_encoded = student_name.replace(' ', '%20')
+                        dashboard_link = f"{DASHBOARD_URL}?student={student_name_encoded}&sheet={spreadsheet_id}"
                     else:
                         # If no absolute URL is set, we fallback to the raw Google Sheet tab
                         dashboard_link = tab_link
                         print(f"  -> Warning: DASHBOARD_URL not set to a full URL (starting with http). Falling back to Google Sheet link.")
-                    
+
                     # ALWAYS update the tracking variable with the best available link
                     gradebook_url = dashboard_link
-                    
+
                     if col_gradebook:
                         cell_updates.append(gspread.Cell(i, col_gradebook, gradebook_url))
             except Exception as gradebook_err:
