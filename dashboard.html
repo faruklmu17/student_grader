@@ -383,22 +383,42 @@
                 // This requires the sheet to be "Shared with anyone with the link"
                 const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(studentName)}`;
 
+                console.log('Fetching from URL:', url);
                 const response = await fetch(url);
                 const text = await response.text();
+                console.log('Raw response (first 500 chars):', text.substring(0, 500));
+
                 // Google returns a weird wrapper, we need to strip it
                 const json = JSON.parse(text.substring(47).slice(0, -2));
+                console.log('Parsed JSON:', json);
+                console.log('Total rows:', json.table.rows.length);
+                console.log('All rows:', json.table.rows);
 
                 renderDashboard(json.table.rows);
             } catch (error) {
-                console.error(error);
+                console.error('Error details:', error);
                 document.getElementById('loader').innerHTML = '<p style="color: var(--danger)">Failed to load data. Make sure the spreadsheet is shared and the student name is correct.</p>';
             }
         }
 
         function renderDashboard(rows) {
-            // Skip the first two header rows (based on our Python script layout)
-            // Row 0: Title, Row 1: Empty, Row 2: Headers
-            const dataRows = rows.slice(3);
+            // Skip the header rows (based on our Python script layout)
+            // Row 0: Title ("STUDENT GRADEBOOK:", name)
+            // Row 1: Empty
+            // Row 2: Headers (Date, Student Name, Course, Assignment, Grade, Feedback, Submitted Code)
+            // Row 3+: Data rows
+
+            console.log('=== RENDER DASHBOARD ===');
+            console.log('Total rows received:', rows.length);
+
+            // Log first few rows to understand structure
+            rows.slice(0, 5).forEach((row, idx) => {
+                console.log(`Row ${idx}:`, row.c?.map(cell => cell?.v || cell?.f || 'null'));
+            });
+
+            const dataRows = rows.slice(3); // Skip first 3 rows (0, 1, 2)
+            console.log('Data rows after slice(3):', dataRows.length);
+
             const list = document.getElementById('assignment-list');
             list.innerHTML = '';
 
@@ -407,10 +427,23 @@
 
             if (dataRows.length === 0) {
                 list.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 2rem;">No assignments graded yet.</p>';
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('dashboard-content').style.display = 'block';
+                return;
             }
 
-            dataRows.reverse().forEach(row => {
+            dataRows.reverse().forEach((row, rowIndex) => {
                 const cells = row.c;
+
+                console.log(`\n--- Processing data row ${rowIndex} ---`);
+                console.log('Cells array:', cells);
+
+                // Skip if row is null or doesn't have cells
+                if (!cells || cells.length === 0) {
+                    console.log('Skipping empty row');
+                    return;
+                }
+
                 const rawDate = cells[0]?.v || ''; // Date
                 const sName = cells[1]?.v || ''; // Student Name
                 const course = cells[2]?.v || ''; // Course
@@ -418,6 +451,18 @@
                 const grade = cells[4]?.v || ''; // Grade
                 const feedback = cells[5]?.v || ''; // Feedback
                 const code = cells[6]?.v || ''; // Submitted Code
+
+                // Detailed logging for each field
+                console.log('Parsed data:', {
+                    rawDate,
+                    sName,
+                    course,
+                    assign,
+                    grade,
+                    feedback: feedback || '(EMPTY FEEDBACK)',
+                    feedbackLength: feedback?.length || 0,
+                    hasCode: !!code
+                });
 
                 // Extract score (e.g. from "Pass (8/10)")
                 const scoreMatch = grade.match(/(\d+)\/10/);
@@ -437,9 +482,9 @@
                             <span class="date-month">${month}</span>
                         </div>
                         <div class="info">
-                            <span class="course">${course}</span>
-                                <h3>${assign}</h3>
-                                <p class="feedback">"${feedback}"</p>
+                            <span class="course">${escapeHtml(course)}</span>
+                                <h3>${escapeHtml(assign)}</h3>
+                                <p class="feedback">${escapeHtml(feedback)}</p>
                                 ${code ? `
                                 <button class="toggle-code-btn" onclick="toggleCode(this)">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
@@ -447,7 +492,7 @@
                                 </button>` : ''}
                             </div>
                             <div class="grade-pill ${isPass ? 'grade-pass' : 'grade-resubmit'}">
-                                ${grade}
+                                ${escapeHtml(grade)}
                             </div>
                             ${code ? `
                             <div class="code-container" style="display: none;">
